@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<title>ハレ系 出勤一覧</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+:root{--bg:#f6f5f3;--card:#fff;--fg:#222;--sub:#777;--line:#e4e1dc;--accent:#d2386c;--err-bg:#fde8e8;--err-fg:#a00}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#18181a;--card:#242427;--fg:#eee;--sub:#999;--line:#38383c;--accent:#f06a97;--err-bg:#4a1f22;--err-fg:#ffb3b3;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#18181a;--card:#242427;--fg:#eee;--sub:#999;--line:#38383c;--accent:#f06a97;--err-bg:#4a1f22;--err-fg:#ffb3b3;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;font-size:14px}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid var(--line);padding-block:10px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+header,main{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1{font-size:18px;margin:0 0 6px;display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+h1 small{font-size:12px;color:var(--sub);font-weight:normal}
+.row{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+button,.chip{border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:999px;padding:5px 12px;font-size:13px;cursor:pointer}
+button.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.chip{display:inline-flex;align-items:center;gap:6px;user-select:none}
+.chip input{display:none}
+.chip .dot{width:10px;height:10px;border-radius:50%}
+.chip.off{opacity:.35}
+.chip .n{color:var(--sub);font-size:12px}
+select{border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:6px;padding:4px 6px}
+main{padding-block:12px 40px;max-width:1400px;margin:auto}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+.card{background:var(--card);border-radius:10px;overflow:hidden;border:1px solid var(--line);text-decoration:none;color:inherit;display:flex;flex-direction:column}
+.card .ph{aspect-ratio:3/4;max-width:100%;background:#ccc center/cover no-repeat;position:relative}
+.card .shop{position:absolute;left:0;top:0;color:#fff;font-size:11px;padding:2px 7px;border-bottom-right-radius:8px;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card .st{position:absolute;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);color:#fff;font-size:12px;padding:3px 6px;text-align:center}
+.card .st.wait{background:rgba(210,56,108,.9)}
+.card .b{padding:6px 8px 8px}
+.card .t{font-weight:bold;font-size:15px}
+.card .nm{margin-top:2px}
+.card .sz{color:var(--sub);font-size:11px}
+.card .note{color:var(--accent);font-size:11px}
+.empty{color:var(--sub);padding:40px;text-align:center}
+.tbl-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;background:var(--card);font-size:13px}
+th,td{border:1px solid var(--line);padding:4px 6px;text-align:center;white-space:nowrap}
+th{background:var(--bg);position:sticky;top:0}
+td.who{text-align:left;position:sticky;left:0;background:var(--card)}
+td.who a{color:inherit;text-decoration:none}
+td.who i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}
+td.off{color:var(--line)}
+h2.sh{display:flex;align-items:center;gap:8px;font-size:16px;margin:22px 0 10px;padding-bottom:6px;border-bottom:3px solid}
+h2.sh:first-child{margin-top:4px}
+h2.sh .n{color:var(--sub);font-size:13px;font-weight:normal}
+h2.sh a{margin-left:auto;font-size:12px;font-weight:normal;color:var(--sub)}
+tr.sh td{text-align:left;font-weight:bold;color:#fff;position:sticky;left:0}
+.err{background:var(--err-bg);color:var(--err-fg);padding:8px 12px;border-radius:8px;margin-bottom:10px}
+</style>
+</head>
+<body>
+<header>
+  <h1>ハレ系 出勤一覧 <small id="upd"></small></h1>
+  <div class="row" id="days"></div>
+  <div class="row" id="shops"></div>
+  <div class="row">
+    <label>並び順 <select id="sort">
+      <option value="start">出勤時間順</option>
+      <option value="end">退勤時間順</option>
+      <option value="age">年齢順</option>
+    </select></label>
+    <label class="chip"><input type="checkbox" id="group" style="display:inline" checked>店舗ごとに分ける</label>
+  </div>
+</header>
+<main id="main"></main>
+<script>
+const DATA = /*DATA*/null;
+const state = { day: 0, off: new Set(), sort: "start", group: true };
+const shopById = Object.fromEntries(DATA.shops.map(s => [s.id, s]));
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+// 深夜帯（0〜5時）は翌日扱いにして並べる
+const mins = t => { if (!t) return 9999; let [h, m] = t.split(":").map(Number); if (h < 6) h += 24; return h * 60 + m; };
+
+document.getElementById("upd").textContent = "取得: " + DATA.updated;
+
+function renderControls() {
+  const days = document.getElementById("days");
+  days.innerHTML = DATA.days.map((d, i) => `<button data-i="${i}" class="${state.day === i ? "on" : ""}">${i === 0 ? "本日 " : ""}${esc(d)}</button>`).join("")
+    + `<button data-i="-1" class="${state.day === -1 ? "on" : ""}">週間表</button>`;
+  days.querySelectorAll("button").forEach(b => b.onclick = () => { state.day = +b.dataset.i; render(); });
+
+  const dayKey = DATA.days[state.day];
+  const shops = document.getElementById("shops");
+  shops.innerHTML = DATA.shops.map(s => {
+    const n = DATA.girls.filter(g => g.shop === s.id && (state.day === -1 ? Object.keys(g.sched).length : g.sched[dayKey])).length;
+    return `<label class="chip ${state.off.has(s.id) ? "off" : ""}" data-s="${s.id}"><span class="dot" style="background:${s.color}"></span>${esc(s.name)}<span class="n">${n}</span></label>`;
+  }).join("");
+  shops.querySelectorAll(".chip").forEach(c => c.onclick = () => {
+    const id = c.dataset.s; state.off.has(id) ? state.off.delete(id) : state.off.add(id); render();
+  });
+}
+
+function sorter(dayKey) {
+  return {
+    start: (a, b) => mins(a.sched[dayKey]?.start) - mins(b.sched[dayKey]?.start),
+    end: (a, b) => mins(a.sched[dayKey]?.end) - mins(b.sched[dayKey]?.end),
+    age: (a, b) => a.age - b.age,
+  }[state.sort];
+}
+sorter.keys = ["start", "end", "age"];
+
+function renderDay(main) {
+  const dayKey = DATA.days[state.day];
+  const list = DATA.girls.filter(g => !state.off.has(g.shop) && g.sched[dayKey]).sort(sorter(dayKey));
+  if (!list.length) { main.innerHTML = `<div class="empty">該当する出勤はありません</div>`; return; }
+  if (!state.group) { main.innerHTML = cards(list, dayKey); return; }
+  main.innerHTML = DATA.shops.map(shop => {
+    const sub = list.filter(g => g.shop === shop.id);
+    return sub.length ? shopHead(shop, sub.length) + cards(sub, dayKey) : "";
+  }).join("");
+}
+
+function shopHead(shop, n) {
+  return `<h2 class="sh" style="border-color:${shop.color}"><span class="dot" style="width:12px;height:12px;border-radius:50%;background:${shop.color}"></span>${esc(shop.name)}<span class="n">${n}名</span><a href="${esc(shop.url)}" target="_blank" rel="noopener noreferrer">公式の出勤表 ›</a></h2>`;
+}
+
+function cards(list, dayKey) {
+  return `<div class="grid">` + list.map(g => {
+    const s = g.sched[dayKey], shop = shopById[g.shop];
+    const st = state.day === 0 && g.status ? `<div class="st ${/待機/.test(g.status) ? "wait" : ""}">${esc(g.status)}</div>` : "";
+    return `<a class="card" href="${esc(g.url)}" target="_blank" rel="noopener noreferrer">
+      <div class="ph" style="background-image:url('${esc(g.img)}')"><span class="shop" style="background:${shop.color}">${esc(shop.name)}</span>${st}</div>
+      <div class="b"><div class="t">${esc(s.start)}〜${esc(s.end)}</div>
+      ${s.note ? `<div class="note">${esc(s.note)}</div>` : ""}
+      <div class="nm">${esc(g.name)} <span class="sz">(${g.age})</span></div>
+      ${g.size ? `<div class="sz">${esc(g.size)}</div>` : ""}</div></a>`;
+  }).join("") + `</div>`;
+}
+
+function renderWeek(main) {
+  const list = DATA.girls.filter(g => !state.off.has(g.shop) && Object.keys(g.sched).length)
+    .sort((a, b) => DATA.shops.findIndex(s => s.id === a.shop) - DATA.shops.findIndex(s => s.id === b.shop));
+  main.innerHTML = `<div class="tbl-wrap"><table><tr><th>名前</th>${DATA.days.map(d => `<th>${esc(d)}</th>`).join("")}</tr>` +
+    list.map((g, i) => (state.group && g.shop !== list[i - 1]?.shop
+        ? `<tr class="sh"><td colspan="${DATA.days.length + 1}" style="background:${shopById[g.shop].color}">${esc(shopById[g.shop].name)}</td></tr>` : "") +
+      `<tr><td class="who"><i style="background:${shopById[g.shop].color}"></i><a href="${esc(g.url)}" target="_blank" rel="noopener noreferrer">${esc(g.name)}</a></td>` +
+      DATA.days.map(d => { const s = g.sched[d]; return s ? `<td>${esc(s.start)}-${esc(s.end)}</td>` : `<td class="off">-</td>`; }).join("") + `</tr>`).join("") +
+    `</table></div>`;
+}
+
+function render() {
+  renderControls();
+  const main = document.getElementById("main");
+  state.day === -1 ? renderWeek(main) : renderDay(main);
+  if (DATA.errors.length) main.insertAdjacentHTML("afterbegin", `<div class="err">取得失敗: ${DATA.errors.map(esc).join(" / ")}</div>`);
+}
+document.getElementById("group").onchange = e => { state.group = e.target.checked; save(); render(); };
+document.getElementById("sort").onchange = e => { state.sort = e.target.value; save(); render(); };
+
+// 表示状態を保存し、再読み込み後も同じ画面に戻す
+function save() {
+  try { sessionStorage.setItem("view", JSON.stringify({ day: state.day, off: [...state.off], sort: state.sort, group: state.group, y: scrollY })); } catch (e) {}
+}
+try {
+  const v = JSON.parse(sessionStorage.getItem("view") || "null");
+  if (v) { state.day = Math.min(v.day, DATA.days.length - 1); state.off = new Set(v.off); if (sorter.keys.includes(v.sort)) state.sort = v.sort; document.getElementById("sort").value = state.sort;
+    if (typeof v.group === "boolean") state.group = v.group; document.getElementById("group").checked = state.group; }
+  render();
+  if (v) scrollTo(0, v.y);
+} catch (e) { render(); }
+document.addEventListener("click", () => setTimeout(save));
+
+// 5分ごとに再読み込み（裏で更新された schedule.html を反映）
+if (!DATA.share) setInterval(() => { save(); location.reload(); }, 5 * 60 * 1000);
+</script>
+</body>
+</html>

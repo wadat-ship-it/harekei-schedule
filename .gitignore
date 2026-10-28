@@ -1,0 +1,6 @@
+schedule.html
+share/
+_site/
+autoupdate.log
+.DS_Store
+__pycache__/
