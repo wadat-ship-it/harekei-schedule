@@ -27,7 +27,10 @@ jobs:
         with:
           python-version: "3.12"
       - run: python3 build_schedule.py --pages
-      - run: touch _site/.nojekyll && printf 'User-agent: *\nDisallow: /\n' > _site/robots.txt
+      - name: 検索エンジン除け
+        run: |
+          touch _site/.nojekyll
+          printf 'User-agent: *\nDisallow: /\n' > _site/robots.txt
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
